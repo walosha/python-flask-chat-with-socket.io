@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Chat</title>
+    <!--Link to CSS -->
+    <link href="../static/bootstrap.min.css" rel="stylesheet" />
+    <link href="../static/style.css" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/emojionearea/3.4.2/emojionearea.css"
+      integrity="sha512-0Nyh7Nf4sn+T48aTb6VFkhJe0FzzcOlqqZMahy/rhZ8Ii5Q9ZXG/1CbunUuEbfgxqsQfWXjnErKZosDSHVKQhQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script
+      type="text/javascript"
+      src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"
+    ></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      type="text/javascript"
+      src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"
+    ></script>
+
+    <script src="//cdn.jsdelivr.net/emojionearea/3.4.2/emojionearea.min.js"></script>
+
+    <script type="text/javascript" charset="utf-8">
+      var socket;
+      $(document).ready(function () {
+        <!-- Once the connection is established, it sends a "join" event to the server indicating that a new user has joined the chat. -->
+
+        socket = io.connect(
+          "http://" + document.domain + ":" + location.port + "/chat"
+        );
+        socket.on("connect", function () {
+          socket.emit("join", {});
+        });
+        socket.on("status", function (data) {
+          const urlSearchParams = new URLSearchParams(window.location.search);
+          const params = Object.fromEntries(urlSearchParams.entries());
+          const username = params.username;
+          var parent = $(
+            "<div id='parent' class='flex justify-end mb-4'><div>"
+          );
+          var newDiv = $("<div></div>");
+          newDiv.addClass(
+            "mr-2 py-3 px-4 bg-blue-400 rounded-bl-3xl rounded-tl-3xl rounded-tr-xl text-white"
+          );
+
+          console.log(username, data.author);
+          newDiv.html(
+            username == data.author ? "You have join the room!" : data.msg
+          );
+          parent.append(newDiv);
+          var innerCntainer = $("#parentContainer").append(parent);
+          $("#chat").scrollTop($("#chat")[0].scrollHeight);
+        });
+
+        //This is for displaying  messages to the User interface
+
+        socket.on("message", function (data) {
+          const urlSearchParams = new URLSearchParams(window.location.search);
+          const params = Object.fromEntries(urlSearchParams.entries());
+          const username = params.username;
+
+          if (!data.msg) return;
+
+          if (username == data.author) {
+            var parent = $(
+              "<div id='parent' class='flex justify-end mb-4'><div>"
+            );
+            var newDiv = $("<div></div>");
+            newDiv.addClass(
+              "mr-2 py-3 px-4 bg-blue-400 rounded-bl-3xl rounded-tl-3xl rounded-tr-xl text-white"
+            );
+            newDiv.html(data.msg);
+            parent.append(newDiv);
+            var newImg = $("<img/>");
+            newImg.attr(
+              "src",
+              "https://uxwing.com/wp-content/themes/uxwing/download/peoples-avatars/no-profile-picture-icon.png"
+            );
+            newImg.addClass("object-cover h-8 w-8 rounded-full");
+            parent.append(newImg);
+            var innerCntainer = $("#parentContainer").append(parent);
+            $("#chat").scrollTop($("#chat")[0].scrollHeight);
+          } else {
+            var parent = $(
+              "<div id='parent' class='flex justify-start mb-4'><div>"
+            );
+
+            var newImg = $("<img/>");
+            newImg.attr(
+              "src",
+              "https://uxwing.com/wp-content/themes/uxwing/download/peoples-avatars/no-profile-picture-icon.png"
+            );
+            newImg.addClass("object-cover h-8 w-8 rounded-full");
+            parent.append(newImg);
+            var newDiv = $("<div></div>");
+            newDiv.addClass(
+              "ml-2 py-3 px-4 bg-gray-400 rounded-br-3xl rounded-tr-3xl rounded-tl-xl text-white"
+            );
+            newDiv.html(data.msg);
+            parent.append(newDiv);
+
+            var innerCntainer = $("#parentContainer").append(parent);
+            $("#chat").scrollTop($("#chat")[0].scrollHeight);
+          }
+        });
+        //This is for sending messages to the socket
+        $("#send").click(function (e) {
+          text = $("#text").val();
+          $("#text").val("");
+          socket.emit("text", { msg: text });
+        });
+      });
+      function leave_room() {
+        socket.emit("left", {}, function () {
+          socket.disconnect();
+          // go back to the login page
+          window.location.href = "{{ url_for('index') }}";
+        });
+      }
+
+      $(document).ready(function () {
+        $(".emojionearea").emojioneArea();
+      });
+    </script>
+  </head>
+
+  <body class="text-center">
+    <!-- This is an example component -->
+    <div class="container mx-auto shadow-lg rounded-lg">
+      <div
+        class="px-5 py-5 flex justify-between items-center bg-white border-b-2"
+      >
+        <div class="font-semibold text-2xl">
+          <h2>Username : {{session['username']}}</h2>
+          <h2>Room : {{session['room']}}</h2>
+        </div>
+        <div class="w-1/2"></div>
+        <div
+          class="h-12 w-12 p-2 rounded-full text-white font-semibold flex items-center justify-center"
+        >
+          <button type="button" class="btn text-dark" onclick="leave_room()">
+            LOG OUT
+          </button>
+        </div>
+      </div>
+      <!-- end header -->
+      <!-- Chatting -->
+      <div class="flex flex-row justify-between bg-white" style="height: 80vh">
+        <!-- chat list -->
+        <div class="flex flex-col w-2/5 border-r-2 overflow-y-auto">
+          <!-- search compt -->
+          <div class="border-b-2 py-4 px-2">
+            <input
+              type="text"
+              placeholder="search chatting"
+              class="py-2 px-2 border-2 border-gray-200 rounded-2xl w-full"
+            />
+          </div>
+          <!-- end search compt -->
+          <!-- user list -->
+          <div
+            class="flex flex-row py-4 px-2 justify-center items-center border-b-2"
+          >
+            <div class="w-1/4">
+              <img
+                src="https://uxwing.com/wp-content/themes/uxwing/download/peoples-avatars/no-profile-picture-icon.png"
+                class="object-cover h-12 w-12 rounded-full"
+                alt=""
+              />
+            </div>
+            <div class="w-full">
+              <div class="text-lg font-semibold">N/A</div>
+            </div>
+          </div>
+
+          <!-- end user list -->
+        </div>
+        <!-- end chat list -->
+        <!-- message -->
+        <div
+          style="overflow-y: scroll"
+          class="w-full px-5 flex flex-col justify-between"
+        >
+          <div id="parentContainer" class="flex flex-col mt-5">
+            <div class="flex justify-end mb-4">
+              <div id="chat"></div>
+            </div>
+          </div>
+          <div class="py-5 d-flex">
+            <input
+              id="text"
+              class="w-full bg-gray-300 py-5 px-3 emojionearea rounded-xl"
+              type="text"
+              placeholder="type your message here..."
+            />
+            <button type="button" id="send" class="btn text-dark">SEND</button>
+          </div>
+        </div>
+        <!-- end message -->
+        <div class="w-2/5 border-l-2 px-5">
+          <!--  -->
+        </div>
+      </div>
+    </div>
+    <script
+      src="https://cdn.jsdelivr.net/gh/mervick/emojionearea@master/dist/emojionearea.min.js"
+      integrity="sha512-hkvXFLlESjeYENO4CNi69z3A1puvONQV5Uh+G4TUDayZxSLyic5Kba9hhuiNLbHqdnKNMk2PxXKm0v7KDnWkYA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+  </body>
+</html>
